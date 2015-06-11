@@ -13,7 +13,7 @@ import (
 const DefaultPasswordLength = 12
 
 func generatePassword(passwordLength uint32) string {
-	// Specify all the acceptable characrters to be used in a password.
+	// Specify all the acceptable characters to be used in a password.
 	acceptableCharacters := []byte{
 		// Lowercase
 		'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z',

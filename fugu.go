@@ -12,7 +12,7 @@ import (
 )
 
 func uploadPasswordToFugu(password string) (string) {
-	// TODO If password could ever accept whitespaces, we need to surround with single quotes
+	// TODO If password could ever accept white spaces, we need to surround with single quotes
 	// so it remains as one argument.
 	output, err := exec.Command(getFuguPath(), password).Output()
 	if err != nil {

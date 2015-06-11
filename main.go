@@ -178,7 +178,7 @@ func (c *ProvisionUserPlugin) GetMetadata() plugin.PluginMetadata {
 				Name:     "provision-user-space",
 				HelpText: "This plugin creates the specified user and org and a personal space. ",
 				UsageDetails: plugin.Usage{
-					Usage: "cf provision-user-space [-email=<username@domain>] [-org=<org>]",
+					Usage: "cf provision-user-space [-email=<username@domain>] [-org=<org> (optional)]",
 				},
 			},
 		},
