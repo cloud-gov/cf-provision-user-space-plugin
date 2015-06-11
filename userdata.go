@@ -4,16 +4,14 @@ import (
 	"fmt"
 )
 
-type UserData struct {
+type userData struct {
 	email    string
+	username string
+	org      string
 	password string
 	fuguURL  string
 }
 
-func (user *UserData) getEmail() string {
-	return "email: " + user.email
-}
-
-func (user *UserData) printPublicData() {
-	fmt.Printf("%s fuguURL: %s", user.getEmail(), user.fuguURL)
+func (user *userData) printIncompleteUserData() {
+	fmt.Printf("email: %s username: %s org: %s\n", user.email, user.username, user.org)
 }

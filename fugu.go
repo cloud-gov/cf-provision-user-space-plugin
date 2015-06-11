@@ -10,14 +10,6 @@ import (
 	"os/exec"
 )
 
-func downloadFuguAndUploadPassword(password string) string {
-	if !doesFuguExist() {
-		fmt.Println("Fugu does not exist. Attempting to download")
-		downloadFugu()
-	}
-	return uploadPasswordToFugu(password)
-}
-
 func uploadPasswordToFugu(password string) (string) {
 	// TODO If password could ever accept whitespaces, we need to surround with single quotes
 	// so it remains as one argument.
@@ -30,6 +22,9 @@ func uploadPasswordToFugu(password string) (string) {
 
 // Downloads the Fugu binary which will upload the password.
 func downloadFugu() {
+	if doesFuguExist() {
+		fmt.Println("Fugu already found. Skipping download")
+	}
 	// Create folder(s) if needed.
 	fuguBinPath := getFuguPath()
 	fuguFolders := filepath.Dir(fuguBinPath)

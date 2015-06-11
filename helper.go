@@ -20,7 +20,7 @@ func generatePassword(passwordLength uint32) string {
 		'0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
 	}
 	// Store the length.
-	var acceptableCharactersLength int32 = int32(len(acceptableCharacters))
+	var acceptableCharactersLength = int32(len(acceptableCharacters))
 
 	// Make a slice of strings.
 	passwordCharacters := make([]string, passwordLength, passwordLength)
@@ -44,6 +44,15 @@ func doesFileExist(file string) bool {
 func errorPrintln(str string) {
 	fmt.Println(str)
 	os.Exit(1)
+}
+
+func extractUsernameFromEmail(email string) string {
+	parts := strings.Split(email, "@")
+	// Simple pattern.
+	if len(parts) != 2 {
+		errorPrintln("Malformed email")
+	}
+	return parts[0]
 }
 
 func interactiveInputValidation() bool {

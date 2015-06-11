@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"github.com/cloudfoundry/cli/plugin"
 	"os"
@@ -12,10 +13,8 @@ import (
 type ProvisionUserPlugin struct{}
 
 // ProvisionSingleUser will create the user, org and space for a single user.
-func (c *ProvisionUserPlugin) ProvisionSingleUser(userdata *UserData, cliConnection *plugin.CliConnection) {
+func (c *ProvisionUserPlugin) ProvisionSingleUser(userdata *userData, cliConnection *plugin.CliConnection) {
 }
-
-
 
 func (c *ProvisionUserPlugin) Run(cliConnection plugin.CliConnection, args []string) {
 	// Check for compatible OS.
@@ -23,8 +22,25 @@ func (c *ProvisionUserPlugin) Run(cliConnection plugin.CliConnection, args []str
 		errorPrintln("Detected incompatible OS: Windows. Exiting...")
 	}
 
+	/*
+		PARSE INPUT
+	*/
+	flagSet := flag.NewFlagSet("provision-user-space", flag.ContinueOnError)
+	emailFlag := flagSet.String("email", "", "The specified e-mail address of the account to be created")
+	orgFlag := flagSet.String("org", "", "The specified org of the account to be created")
+	_ = flagSet.Parse(args[1:])
+	if len(*emailFlag) < 1 {
+		errorPrintln("No email flag given. Please run with --help for usage.")
+	}
+	if len(*orgFlag) < 1 {
+		errorPrintln("No org flag given. Please run with --help for usage.")
+	}
+	userdata := userData{email: *emailFlag, username: extractUsernameFromEmail(*emailFlag), org: *orgFlag}
+
+	/*
+		SETUP
+	*/
 	// Check if logged in.
-	fmt.Printf("Found the following args %v\n", args)
 	loggedIn, err := cliConnection.IsLoggedIn()
 	if err != nil {
 		errorPrintln("Unable to connect.")
@@ -40,11 +56,15 @@ func (c *ProvisionUserPlugin) Run(cliConnection plugin.CliConnection, args []str
 		errorPrintln("No username found.")
 	}
 
+	downloadFugu()
+
+	/*
+		SUMMARY
+	*/
 	// Give the admin a summary before the actions are applied.
 	fmt.Println("Your username: " + username)
+	userdata.printIncompleteUserData()
 
-	//newUserEmail := "test"
-	// newPassword := generatePassword()
 
 	// Validate that indeed they want to proceed.
 	var interactive bool = true
@@ -52,37 +72,23 @@ func (c *ProvisionUserPlugin) Run(cliConnection plugin.CliConnection, args []str
 		// var answer string
 		fmt.Println("Is this correct? [y/n]")
 		var proceed bool = interactiveInputValidation()
-		/*
-				InteractiveInputValidation:
-			reader := bufio.NewReader(os.Stdin)
-					for {
-						answer, _ := reader.ReadString('\n')
-						answer = strings.TrimSpace(answer)
-						fmt.Print("found (" + answer +")")
-						switch strings.ToLower(answer) {
-						case "y", "yes":
-							proceed = true
-							break InteractiveInputValidation
-						case "n", "no":
-							proceed = false
-							break InteractiveInputValidation
-						}
-						fmt.Println("Please type 'y' or 'n'")
-					}
-
-		*/
 		if !proceed {
 			errorPrintln("Admin decided to not proceed. Exiting")
 		}
 	}
-	fmt.Println("Made it out")
-	fmt.Println("JaMES we are lucky " + downloadFuguAndUploadPassword("test"))
+	// fmt.Println("Made it out")
+
+	/*
+		EXECUTE
+	*/
+	// TODO
+
 	os.Exit(0)
 }
 
 func (c *ProvisionUserPlugin) GetMetadata() plugin.PluginMetadata {
 	return plugin.PluginMetadata{
-		Name: "Provision-New-User-Plugin",
+		Name: "Provision-User-Space-Plugin",
 		Version: plugin.VersionType{
 			Major: 1,
 			Minor: 0,
@@ -90,8 +96,11 @@ func (c *ProvisionUserPlugin) GetMetadata() plugin.PluginMetadata {
 		},
 		Commands: []plugin.Command{
 			plugin.Command{
-				Name:     "provision-user-workspace",
-				HelpText: "some text for now",
+				Name:     "provision-user-space",
+				HelpText: "This plugin creates the specified user and org and a personal space. ",
+				UsageDetails: plugin.Usage{
+					Usage: "cf provision-user-space [-email=<username@domain>] [-org=<org>]",
+				},
 			},
 		},
 	}
