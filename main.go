@@ -6,6 +6,7 @@ import (
 	"github.com/cloudfoundry/cli/plugin"
 	"os"
 	"runtime"
+	"strings"
 )
 
 // ProvisionUserPlugin is the struct that implements the interface defined by the cf core CLI.
@@ -13,7 +14,84 @@ import (
 type ProvisionUserPlugin struct{}
 
 // ProvisionSingleUser will create the user, org and space for a single user.
-func (c *ProvisionUserPlugin) ProvisionSingleUser(userdata *userData, cliConnection *plugin.CliConnection) {
+func (c *ProvisionUserPlugin) ProvisionSingleUser(userdata *userData, cliConnection plugin.CliConnection) {
+	// Create password.
+	userdata.password = generatePassword(DefaultPasswordLength)
+
+	// Create user.
+	output, err := cliConnection.CliCommandWithoutTerminalOutput("create-user", userdata.email, userdata.password)
+
+	if err != nil {
+		errorPrintln("Error while creating user. Error: " + err.Error())
+	} else {
+		userAlreadyExists := false
+		// Check if output says the user already exists.
+		for _, line := range output {
+			if strings.Contains(line, "already exists") {
+				userAlreadyExists = true
+				break
+			}
+		}
+
+		// Upload password with fugu if the user was just created.
+		if !userAlreadyExists {
+			fmt.Println("Uploading with fugu")
+			userdata.fuguURL = uploadPasswordToFugu(userdata.password)
+		}
+	}
+
+	// If the spaces doesn't exist, create it.
+	foundUserSpace := false
+	spaces, err := cliConnection.CliCommandWithoutTerminalOutput("spaces")
+	for _, space := range spaces {
+		if space == userdata.username {
+			foundUserSpace = true
+			break
+		}
+	}
+	if foundUserSpace {
+		fmt.Println("Space '" + userdata.username + "' already exists")
+	} else {
+		_, err = cliConnection.CliCommandWithoutTerminalOutput("create-space", userdata.username)
+		if err != nil {
+			errorPrintln("Unable to create space '" + userdata.username + "' Error: " + err.Error())
+		}
+	}
+	// Set user permissions.
+	_, err = cliConnection.CliCommandWithoutTerminalOutput("set-space-role", userdata.email, "sandbox", userdata.username, "SpaceDeveloper")
+	_, err = cliConnection.CliCommandWithoutTerminalOutput("set-space-role", userdata.email, "sandbox", userdata.username, "SpaceManager")
+
+	// Create the org if supplied and give the user permissions.
+	if len(userdata.org) > 0 {
+		foundOrg := false
+		orgs, err := cliConnection.CliCommandWithoutTerminalOutput("orgs")
+		for _, org := range orgs {
+			if org == userdata.org {
+				foundOrg = true
+				break
+			}
+		}
+		if foundOrg {
+			fmt.Println("Org '" + userdata.org + "' already exists")
+		} else {
+			_, err = cliConnection.CliCommandWithoutTerminalOutput("create-org", userdata.org)
+			if err != nil {
+				errorPrintln("Unable to create org '" + userdata.org + "' Error: " + err.Error())
+			}
+		}
+		_, err = cliConnection.CliCommandWithoutTerminalOutput("set-org-role", userdata.email, userdata.org, "OrgManager")
+		// Since the typical expectation is that being OrgManager confers access to the contained
+		// spaces as well, but doesn't we'll go ahead and add those permissions.
+		cliConnection.CliCommandWithoutTerminalOutput("target", "-o", userdata.org)
+		spaces, _ = cliConnection.CliCommandWithoutTerminalOutput("spaces")
+		for _, space := range spaces {
+			_, err = cliConnection.CliCommandWithoutTerminalOutput("set-space-role", userdata.email, userdata.org, space, "SpaceDeveloper")
+			_, err = cliConnection.CliCommandWithoutTerminalOutput("set-space-role", userdata.email, userdata.org, space, "SpaceManager")
+		}
+	}
+
+	// Finish with a print.
+	userdata.printUserData()
 }
 
 func (c *ProvisionUserPlugin) Run(cliConnection plugin.CliConnection, args []string) {
@@ -33,7 +111,7 @@ func (c *ProvisionUserPlugin) Run(cliConnection plugin.CliConnection, args []str
 		errorPrintln("No email flag given. Please run with --help for usage.")
 	}
 	if len(*orgFlag) < 1 {
-		errorPrintln("No org flag given. Please run with --help for usage.")
+		// TODO warn but don't fail.
 	}
 	userdata := userData{email: *emailFlag, username: extractUsernameFromEmail(*emailFlag), org: *orgFlag}
 
@@ -56,6 +134,10 @@ func (c *ProvisionUserPlugin) Run(cliConnection plugin.CliConnection, args []str
 		errorPrintln("No username found.")
 	}
 
+	_, err = cliConnection.CliCommandWithoutTerminalOutput("target", "-o", "sandbox")
+	if err != nil {
+		errorPrintln("Unable to target the sandbox org")
+	}
 	downloadFugu()
 
 	/*
@@ -63,26 +145,23 @@ func (c *ProvisionUserPlugin) Run(cliConnection plugin.CliConnection, args []str
 	*/
 	// Give the admin a summary before the actions are applied.
 	fmt.Println("Your username: " + username)
-	userdata.printIncompleteUserData()
-
+	userdata.printPartialUserData()
 
 	// Validate that indeed they want to proceed.
-	var interactive bool = true
+	var interactive = true
 	if interactive {
 		// var answer string
 		fmt.Println("Is this correct? [y/n]")
-		var proceed bool = interactiveInputValidation()
+		var proceed = interactiveInputValidation()
 		if !proceed {
 			errorPrintln("Admin decided to not proceed. Exiting")
 		}
 	}
-	// fmt.Println("Made it out")
 
 	/*
 		EXECUTE
 	*/
-	// TODO
-
+	c.ProvisionSingleUser(&userdata, cliConnection)
 	os.Exit(0)
 }
 

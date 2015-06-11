@@ -5,13 +5,16 @@ import (
 	"fmt"
 	"math/rand"
 	"os"
-	"strconv"
 	"strings"
+	"time"
 )
+
+// Default password length for a password to be generated.
+const DefaultPasswordLength = 12
 
 func generatePassword(passwordLength uint32) string {
 	// Specify all the acceptable characrters to be used in a password.
-	acceptableCharacters := []rune{
+	acceptableCharacters := []byte{
 		// Lowercase
 		'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z',
 		// Uppercase
@@ -25,10 +28,13 @@ func generatePassword(passwordLength uint32) string {
 	// Make a slice of strings.
 	passwordCharacters := make([]string, passwordLength, passwordLength)
 
+	// Create a seed that makes the numbers nearly random.
+	rand.Seed(time.Now().UTC().UnixNano())
+
 	// Iterate through each slot in the slice and store a random accepted character into the slot.
 	var index uint32
 	for index = 0; index < passwordLength; index++ {
-		passwordCharacters[index] = strconv.QuoteRune(acceptableCharacters[rand.Int31n(acceptableCharactersLength)])
+		passwordCharacters[index] = string(acceptableCharacters[rand.Int31n(acceptableCharactersLength)])
 	}
 
 	// Return the single joined together string.
@@ -73,9 +79,5 @@ func interactiveInputValidation() bool {
 		// fmt.Println("Please type 'y' or 'n'")
 		// return interactiveInputValidation()
 	}
-
-}
-
-func printSummary() {
 
 }

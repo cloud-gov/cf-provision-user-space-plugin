@@ -8,6 +8,7 @@ import (
 	"path"
 	"net/http"
 	"os/exec"
+	"strings"
 )
 
 func uploadPasswordToFugu(password string) (string) {
@@ -17,7 +18,7 @@ func uploadPasswordToFugu(password string) (string) {
 	if err != nil {
 		errorPrintln("Cannot execute fugu. Please check internet connection and if binary exist at: " +getFuguPath() + "Error: " + err.Error())
 	}
-	return string(output[:])
+	return strings.TrimSpace(string(output[:]))
 }
 
 // Downloads the Fugu binary which will upload the password.
