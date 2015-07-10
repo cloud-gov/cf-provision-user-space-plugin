@@ -38,7 +38,7 @@ To install the plugin:
 ## Usage
 To use the plugin:
 
-	$ cf provision-user-space [-email=<username@domain>] [-org=<org> (optional)]
+	$ cf provision-user-space username@domain [-org=<org> (optional)]
 
 
 ## Removal

@@ -22,12 +22,13 @@ func (c *ProvisionUserPlugin) ProvisionSingleUser(userdata *userData, cliConnect
 	output, err := cliConnection.CliCommandWithoutTerminalOutput("create-user", userdata.email, userdata.password)
 
 	if err != nil {
-		errorPrintln("Error while creating user. Error: " + err.Error())
+		errorPrintln("Unable to create user. Please check if you have admin access. Error: " + err.Error())
 	} else {
 		userAlreadyExists := false
 		// Check if output says the user already exists.
 		for _, line := range output {
 			if strings.Contains(line, "already exists") {
+				fmt.Println("User " + userdata.email + " already exists. Will not attempt to create user.")
 				userAlreadyExists = true
 				break
 			}
@@ -64,7 +65,9 @@ func (c *ProvisionUserPlugin) ProvisionSingleUser(userdata *userData, cliConnect
 	// Create the org if supplied and give the user permissions.
 	if len(userdata.org) > 0 {
 		foundOrg := false
+		// Get the orgs.
 		orgs, err := cliConnection.CliCommandWithoutTerminalOutput("orgs")
+		// Check to see if the org already exists.
 		for _, org := range orgs {
 			if org == userdata.org {
 				foundOrg = true
@@ -79,6 +82,8 @@ func (c *ProvisionUserPlugin) ProvisionSingleUser(userdata *userData, cliConnect
 				errorPrintln("Unable to create org '" + userdata.org + "' Error: " + err.Error())
 			}
 		}
+
+		// Set org roles.
 		_, err = cliConnection.CliCommandWithoutTerminalOutput("set-org-role", userdata.email, userdata.org, "OrgManager")
 		// Since the typical expectation is that being OrgManager confers access to the contained
 		// spaces as well, but doesn't we'll go ahead and add those permissions.
@@ -103,17 +108,27 @@ func (c *ProvisionUserPlugin) Run(cliConnection plugin.CliConnection, args []str
 	/*
 		PARSE INPUT
 	*/
+	// Arg 1: provision-user-space
+	// Args 2-N: args
+	if len(args) < 2 {
+		errorPrintln("Not enough args")
+	}
+
+	// Get the e-mail address.
+	email := args[1]
+
+	// Setup the optional flags.
 	flagSet := flag.NewFlagSet("provision-user-space", flag.ContinueOnError)
-	emailFlag := flagSet.String("email", "", "The specified e-mail address of the account to be created")
 	orgFlag := flagSet.String("org", "", "The specified org of the account to be created")
-	_ = flagSet.Parse(args[1:])
-	if len(*emailFlag) < 1 {
-		errorPrintln("No email flag given. Please run with --help for usage.")
+	// Only look at the other arguments if we have more.
+	if len(args) > 2 {
+		_ = flagSet.Parse(args[2:])
+		if len(*orgFlag) < 1 {
+			// TODO warn but don't fail.
+		}
 	}
-	if len(*orgFlag) < 1 {
-		// TODO warn but don't fail.
-	}
-	userdata := userData{email: *emailFlag, username: extractUsernameFromEmail(*emailFlag), org: *orgFlag}
+
+	userdata := userData{email: email, username: extractUsernameFromEmail(email), org: *orgFlag}
 
 	/*
 		SETUP
@@ -150,7 +165,6 @@ func (c *ProvisionUserPlugin) Run(cliConnection plugin.CliConnection, args []str
 	// Validate that indeed they want to proceed.
 	var interactive = true
 	if interactive {
-		// var answer string
 		fmt.Println("Is this correct? [y/n]")
 		var proceed = interactiveInputValidation()
 		if !proceed {
@@ -178,7 +192,7 @@ func (c *ProvisionUserPlugin) GetMetadata() plugin.PluginMetadata {
 				Name:     "provision-user-space",
 				HelpText: "This plugin creates the specified user and org and a personal space. ",
 				UsageDetails: plugin.Usage{
-					Usage: "cf provision-user-space [-email=<username@domain>] [-org=<org> (optional)]",
+					Usage: "cf provision-user-space <username@domain> [-org=<org> (optional)]",
 				},
 			},
 		},

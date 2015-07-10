@@ -56,7 +56,7 @@ func extractUsernameFromEmail(email string) string {
 	parts := strings.Split(email, "@")
 	// Simple pattern.
 	if len(parts) != 2 {
-		errorPrintln("Malformed email")
+		errorPrintln("Malformed email: " + email)
 	}
 	return parts[0]
 }
